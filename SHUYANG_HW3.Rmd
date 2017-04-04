@@ -1,0 +1,170 @@
+---
+title: "BIOST_HW3"
+author: "Shuyang Wu"
+date: "3/9/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Q1
+(a) Prior mean of sensitivity: 21.96/(21.96 + 5.49) = 0.8
+    Prior mean of specificity: 4.1/(4.1 + 1.78) = 0.6972789
+    Prior mean of prevalence: (0+1)/2 = 0.5
+    
+(b)
+```{r Q1}
+diag.one <- function(data=list(a=125, b= 37),
+                     NPOST=5000, BURN=1000, THIN=5, 
+                     a.pi=1, b.pi=1,
+                     a.S=21.96, b.S=5.49,
+                     a.C=4.1, b.C=1.76,
+                     pi0=.5, S0=.5, C0=.5){
+  pi <- pi0
+  S <- S0
+  C <- C0
+  post <- matrix(0, NPOST, 5) #5rows
+  dimnames(post) <- list(NULL, c("pi", "S", "C", "PPV","NPV"))
+  j <- 1
+  for (i in (1:((NPOST*THIN) + BURN))){
+    ## sampling from fc for latent Y1
+    prob1 <- pi*S/(pi*S + (1-pi)*(1-C))
+    Y1 <- rbinom(1, data$a, prob1)
+    ## sampling from fc for latent Y2
+    prob2 <- pi*(1-S)/(pi*(1-S) + (1-pi)*C)
+    Y2 <- rbinom(1, data$b, prob2)
+    ## sampling from fc for pi
+    pi <- rbeta(1, Y1+Y2+a.pi, data$a+data$b-Y1-Y2+b.pi)
+    ## sampling from fc for S
+    S <- rbeta(1, Y1 + a.S, Y2 + b.S)
+    ## sampling from fc for C
+    C <- rbeta(1, data$b - Y2 + a.C, data$a - Y1 + b.C)
+    ## PPV
+    PPV<-Y1/data$a
+    ##NPV
+    NPV<-(data$b-Y2)/data$b
+    if (i > BURN && (i %% THIN == 0)){
+      post[j,] <- c(pi, S, C, PPV, NPV)
+      j <- j+1
+    }
+  }
+  return(post)
+}
+
+res<-diag.one()
+apply(res,2,mean)  #posterior simulations
+apply(res,2,sd) 
+apply(res,2,quantile,c(0.025,0.5,0.975)) #interval
+```
+Posterior     Prevalence      Sensitivity       Specificity        PPV         NPV
+
+Mean          0.8097315       0.8271123         0.6170737       0.8743792   0.3953297
+
+std           0.18246162      0.04898285        0.20180800      0.18415189  0.24904023 
+
+2.5%          0.2314899       0.7346626         0.2339075       0.2638      0.0000000
+
+median        0.8608360       0.8260054         0.6271441       0.9440      0.3783784
+
+97.5%         0.9924523       0.9223433         0.9456956       1.0000      0.8918919
+
+(c) Sample fraction of positive serologic test = 125/162 = 0.7716049
+The mean prevalence calculated taken specificity and sensitivity into account is 0.81, larger than 0.77. Thus, the assumption that all positive results are true positives and all negative results are true negatives are unreasonale.
+
+## Q2
+(a)
+```{r Q2a}
+library(tree)
+library(treeMI)
+library(mi)
+library(mitools)
+
+sb<-read.csv("~/Downloads/smallbone.csv")
+
+#Percentage of missing values for each variable
+colMeans(is.na(sb))
+
+#Percentage of subjects with at least one missing variables
+nnzero(rowSums(is.na(sb)))/nrow(sb)
+```
+
+(b) Complete-case analysis
+```{r Q2b}
+model <- glm(gr~etoh+smoke+dementia+Antiseiz+LevoT4+AntiChol+albumin+bmi+lhgb,family=binomial(link='logit'),data=sb)
+summary(model)
+```
+
+
+(c)Chained equations
+
+```{r Q2c}
+##Multiple imputation using chained equations
+
+sb<-missing_data.frame(sb)
+
+#display missing data patterns
+image(sb)
+
+#display data types and other information
+show(sb)
+
+#create multiply imputed data sets
+IMP<-mi(sb)  
+
+#analysis
+mi.fit=pool(gr~etoh+smoke+dementia+Antiseiz+LevoT4+AntiChol+albumin+bmi+lhgb,IMP,family=binomial(link="logit"))
+display(mi.fit)
+
+summary(mi.fit)
+
+```
+
+(d)
+```{r Q2d}
+#Multiple imputation via sequential regression tree
+g1=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g2=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g3=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g4=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g5=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g6=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g7=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g8=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g9=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g10=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g11=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+g12=treeMI(data.frame(sb), ITER = 30, factorvar = c(1,0,1,1,1,1,1,1,1,0,0,0), minCut=5)
+
+
+all<-imputationList(list(g1,g2,g3,g4,g5,g6,g7,g8,g9)) #combining the imputation
+model1<-with(all,glm(gr~etoh+smoke+dementia+Antiseiz+LevoT4+AntiChol+albumin+bmi+lhgb,family=binomial))
+summary(MIcombine(model1))
+```
+Advantage of using MI with CART: Chained equation assumes that each variable has a joint distribution with the rest of the variables which is not always true and logical. Also, non-linear relationships can not be easily represented in the model. CART uses a tree structure to represent the dependencies among variables and thus solves the non-linearity problem as well. MI with CART generally shows smaller root mean squred error and bias.
+
+(e) Comparing results from b,c,d
+            complete   chained      CART
+            
+(Intercept) 10.85508   10.37845     12.53604075
+
+etoh         1.39093   1.23003      1.09164551
+
+smoke        0.92920   0.61175      0.55085822
+
+dementia     2.50919   1.47472      1.52378169
+
+Antiseiz     3.31056   2.37072      2.45534543
+
+LevoT4       2.01009   0.89548      0.80360954
+
+AntiChol    -1.91833   -0.70482     -1.43958551
+
+albumin     -0.91116   -0.90528     -0.89038490
+
+bmi         -0.10416   -0.12159     -0.09883467
+
+lhgb        -2.59693   -2.07914     -3.11148691
+
+The estimates using MI are generally smaller (closer to zero) than using complete case analysis. I think this could be due to ignoring all missing entries in complete case analysis, as now the imputed estimates accounted for the missing data, the estimates became less biased. The difference between estimates using CART and complete case is larger than that between estimates using chained equation and complete case. Based on the assumptions made in chained equation and CART, results from CART are probabily closer to reality.

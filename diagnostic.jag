@@ -1,0 +1,25 @@
+model{
+  ## model
+  a ~ dbin(PPT, N)
+  Y1 ~ dbin(pY1,a)
+  Y2 ~ dbin(pY2, N-a)
+  
+  ## defining probability of positive test
+  PPT <- S*pi + (1-C)*(1-pi)
+  
+  ## defining of probability of disease given test results
+  pY1 <- pi*S/PPT
+  pY2 <- pi*(1-S)/(1-PPT)
+  
+  ## defining PPV and NPV
+  PPV<- pY1
+  NPV<- 1-pY2
+  
+  ## priors
+  S ~ dbeta(aS,bS) # prior for sensitivity
+  C ~ dbeta (aC, bC) # prior for specificity
+  pi ~ dbeta(api, bpi) # prior for prevalence
+  
+  ## computing 
+
+} 
